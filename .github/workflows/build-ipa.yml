@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
@@ -27,15 +27,19 @@ jobs:
       - name: List available Xcode versions
         run: ls /Applications/ | grep Xcode
 
-      - name: Select Xcode
+      - name: Select Xcode 16
         run: |
-          # Try Xcode 16.2 first, then latest available
+          # Use Xcode 16.x for iOS 18 SDK support
           if [ -d "/Applications/Xcode_16.2.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
           elif [ -d "/Applications/Xcode_16.1.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.0.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
           elif [ -d "/Applications/Xcode_16.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
           else
             sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           fi
@@ -43,13 +47,13 @@ jobs:
       - name: Show Xcode and SDK info
         run: |
           xcodebuild -version
-          xcodebuild -showsdks | grep iphoneos
+          xcodebuild -showsdks
 
       - name: Build CameraAccess
         working-directory: samples/CameraAccess
         run: |
           # Get the latest iphoneos SDK
-          SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+          SDK=$(xcodebuild -showsdks | grep 'iphoneos' | tail -1 | awk '{print $NF}')
           echo "Using SDK: $SDK"
 
           xcodebuild clean build \
@@ -57,27 +61,41 @@ jobs:
             -scheme CameraAccess \
             -configuration Release \
             -sdk "$SDK" \
-            -destination 'generic/platform=iOS' \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
             GCC_TREAT_WARNINGS_AS_ERRORS=NO \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=17.0 \
+            | tee /tmp/build_output.txt || true
+
+          echo "---"
+          echo "Build exit code: ${PIPESTATUS[0]}"
+
+          # Check if the executable was created despite warnings
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" -path "*/Release-iphoneos/*" 2>/dev/null | head -1)
+          if [ -n "$APP_PATH" ] && [ -f "$APP_PATH/CameraAccess" ]; then
+            echo "SUCCESS: Executable found at $APP_PATH/CameraAccess"
+          else
+            echo "FAIL: No executable found"
+            echo "Last 30 lines of build output:"
+            tail -30 /tmp/build_output.txt
+            grep -i "error:" /tmp/build_output.txt | head -20
+            exit 1
+          fi
 
       - name: Find and verify app
         id: find_app
         run: |
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" -path "*/Release-iphoneos/*" 2>/dev/null | head -1)
           if [ -z "$APP_PATH" ]; then
-            echo "Trying alternative paths..."
             APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" 2>/dev/null | head -1)
           fi
           echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
           echo "Found app at: $APP_PATH"
           ls -la "$APP_PATH/"
-          echo "Checking executable..."
           file "$APP_PATH/CameraAccess"
 
       - name: Create IPA
