@@ -16,11 +16,11 @@ jobs:
           import Foundation
           enum Secrets {
             static let geminiAPIKey = "${{ secrets.GEMINI_API_KEY }}"
-            static let openClawHost = "http://172.20.10.8"
+            static let openClawHost = "http://192.168.0.25"
             static let openClawPort = 3000
             static let openClawHookToken = "dev-key"
             static let openClawGatewayToken = "dev-key"
-            static let webrtcSignalingURL = "ws://172.20.10.8:8080"
+            static let webrtcSignalingURL = "ws://192.168.0.25:8080"
           }
           SWIFT
 
