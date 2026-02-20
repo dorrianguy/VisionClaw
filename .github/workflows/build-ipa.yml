@@ -1,0 +1,73 @@
+name: Build SiberiusClaw IPA
+
+on:
+  push:
+    branches: [ build-ipa ]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Secrets.swift
+        run: |
+          cat > samples/CameraAccess/CameraAccess/Secrets.swift << 'SWIFT'
+          import Foundation
+          enum Secrets {
+            static let geminiAPIKey = "PLACEHOLDER_KEY"
+            static let openClawHost = "http://192.168.0.25"
+            static let openClawPort = 3000
+            static let openClawHookToken = "dev-key"
+            static let openClawGatewayToken = "dev-key"
+            static let webrtcSignalingURL = "ws://192.168.0.25:8080"
+          }
+          SWIFT
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build CameraAccess
+        working-directory: samples/CameraAccess
+        run: |
+          xcodebuild clean build \
+            -project CameraAccess.xcodeproj \
+            -scheme CameraAccess \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
+
+      - name: Find and verify app
+        id: find_app
+        run: |
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" -path "*/Release-iphoneos/*" | head -1)
+          echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
+          echo "Found app at: $APP_PATH"
+          ls -la "$APP_PATH/"
+          echo "Checking executable..."
+          file "$APP_PATH/CameraAccess"
+
+      - name: Create IPA
+        run: |
+          APP_PATH="${{ steps.find_app.outputs.app_path }}"
+          rm -rf /tmp/Payload /tmp/SiberiusClaw.ipa
+          mkdir -p /tmp/Payload
+          cp -r "$APP_PATH" /tmp/Payload/
+          cd /tmp
+          zip -r SiberiusClaw.ipa Payload
+          ls -la SiberiusClaw.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiberiusClaw
+          path: /tmp/SiberiusClaw.ipa
+          retention-days: 7

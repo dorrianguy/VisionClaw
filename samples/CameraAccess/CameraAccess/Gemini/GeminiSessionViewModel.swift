@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 @MainActor
 class GeminiSessionViewModel: ObservableObject {
@@ -12,8 +13,8 @@ class GeminiSessionViewModel: ObservableObject {
   @Published var toolCallStatus: ToolCallStatus = .idle
   @Published var openClawConnectionState: OpenClawConnectionState = .notConfigured
   private let geminiService = GeminiLiveService()
-  private let openClawBridge = OpenClawBridge()
-  private var toolCallRouter: ToolCallRouter?
+  private let siberiusGateway = SiberiusGateway()
+  private var toolCallRouter: SiberiusToolCallRouter?
   private let audioManager = AudioManager()
   private var lastVideoFrameTime: Date = .distantPast
   private var stateObservation: Task<Void, Never>?
@@ -82,12 +83,12 @@ class GeminiSessionViewModel: ObservableObject {
       }
     }
 
-    // Check OpenClaw connectivity and start fresh session
-    await openClawBridge.checkConnection()
-    openClawBridge.resetSession()
+    // Check Siberius Gateway connectivity and start fresh session
+    await siberiusGateway.checkConnection()
+    siberiusGateway.resetSession()
 
     // Wire tool call handling
-    toolCallRouter = ToolCallRouter(bridge: openClawBridge)
+    toolCallRouter = SiberiusToolCallRouter(gateway: siberiusGateway)
 
     geminiService.onToolCall = { [weak self] toolCall in
       guard let self else { return }
@@ -115,8 +116,8 @@ class GeminiSessionViewModel: ObservableObject {
         guard !Task.isCancelled else { break }
         self.connectionState = self.geminiService.connectionState
         self.isModelSpeaking = self.geminiService.isModelSpeaking
-        self.toolCallStatus = self.openClawBridge.lastToolCallStatus
-        self.openClawConnectionState = self.openClawBridge.connectionState
+        self.toolCallStatus = self.siberiusGateway.lastToolCallStatus
+        self.openClawConnectionState = self.siberiusGateway.connectionState
       }
     }
 
