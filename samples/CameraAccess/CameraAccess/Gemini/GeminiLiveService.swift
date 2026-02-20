@@ -191,7 +191,7 @@ class GeminiLiveService: ObservableObject {
         "realtimeInputConfig": [
           "automaticActivityDetection": [
             "disabled": false,
-            "startOfSpeechSensitivity": "START_SENSITIVITY_HIGH",
+            "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
             "endOfSpeechSensitivity": "END_SENSITIVITY_LOW",
             "silenceDurationMs": 500,
             "prefixPaddingMs": 40
