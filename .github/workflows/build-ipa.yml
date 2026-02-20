@@ -12,10 +12,10 @@ jobs:
 
       - name: Generate Secrets.swift
         run: |
-          cat > samples/CameraAccess/CameraAccess/Secrets.swift << 'SWIFT'
+          cat > samples/CameraAccess/CameraAccess/Secrets.swift << SWIFT
           import Foundation
           enum Secrets {
-            static let geminiAPIKey = "AIzaSyD8p0soT9qEspLFQGCI0B_tWpC83-ftLpM"
+            static let geminiAPIKey = "${{ secrets.GEMINI_API_KEY }}"
             static let openClawHost = "http://172.20.10.8"
             static let openClawPort = 3000
             static let openClawHookToken = "dev-key"
