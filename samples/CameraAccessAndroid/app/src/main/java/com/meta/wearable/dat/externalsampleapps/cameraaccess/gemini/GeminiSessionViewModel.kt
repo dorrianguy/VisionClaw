@@ -4,10 +4,10 @@ import android.graphics.Bitmap
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.meta.wearable.dat.externalsampleapps.cameraaccess.openclaw.OpenClawBridge
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.openclaw.OpenClawConnectionState
-import com.meta.wearable.dat.externalsampleapps.cameraaccess.openclaw.ToolCallRouter
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.openclaw.ToolCallStatus
+import com.meta.wearable.dat.externalsampleapps.cameraaccess.siberius.SiberiusGateway
+import com.meta.wearable.dat.externalsampleapps.cameraaccess.siberius.SiberiusToolCallRouter
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.stream.StreamingMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -37,8 +37,8 @@ class GeminiSessionViewModel : ViewModel() {
     val uiState: StateFlow<GeminiUiState> = _uiState.asStateFlow()
 
     private val geminiService = GeminiLiveService()
-    private val openClawBridge = OpenClawBridge()
-    private var toolCallRouter: ToolCallRouter? = null
+    private val siberiusGateway = SiberiusGateway()
+    private var toolCallRouter: SiberiusToolCallRouter? = null
     private val audioManager = AudioManager()
     private var lastVideoFrameTime: Long = 0
     private var stateObservationJob: Job? = null
@@ -98,13 +98,13 @@ class GeminiSessionViewModel : ViewModel() {
             }
         }
 
-        // Check OpenClaw and start session
+        // Check Siberius Gateway and start session
         viewModelScope.launch {
-            openClawBridge.checkConnection()
-            openClawBridge.resetSession()
+            siberiusGateway.checkConnection()
+            siberiusGateway.resetSession()
 
             // Wire tool call handling
-            toolCallRouter = ToolCallRouter(openClawBridge, viewModelScope)
+            toolCallRouter = SiberiusToolCallRouter(siberiusGateway, viewModelScope)
 
             geminiService.onToolCall = { toolCall ->
                 for (call in toolCall.functionCalls) {
@@ -125,8 +125,8 @@ class GeminiSessionViewModel : ViewModel() {
                     _uiState.value = _uiState.value.copy(
                         connectionState = geminiService.connectionState.value,
                         isModelSpeaking = geminiService.isModelSpeaking.value,
-                        toolCallStatus = openClawBridge.lastToolCallStatus.value,
-                        openClawConnectionState = openClawBridge.connectionState.value,
+                        toolCallStatus = siberiusGateway.lastToolCallStatus.value,
+                        openClawConnectionState = siberiusGateway.connectionState.value,
                     )
                 }
             }
