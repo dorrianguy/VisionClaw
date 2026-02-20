@@ -38,7 +38,7 @@ enum GeminiConfig {
     For messages, confirm recipient and content before delegating unless clearly urgent.
     """
 
-  // User-configurable values (Settings screen overrides, falling back to Secrets.swift)
+  // User-configurable (API key updated 2026-02-20) values (Settings screen overrides, falling back to Secrets.swift)
   static var apiKey: String { SettingsManager.shared.geminiAPIKey }
   static var openClawHost: String { SettingsManager.shared.openClawHost }
   static var openClawPort: Int { SettingsManager.shared.openClawPort }
