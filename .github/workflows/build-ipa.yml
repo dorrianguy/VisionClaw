@@ -24,31 +24,56 @@ jobs:
           }
           SWIFT
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: List available Xcode versions
+        run: ls /Applications/ | grep Xcode
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Select Xcode
+        run: |
+          # Try Xcode 16.2 first, then latest available
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+          else
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
+
+      - name: Show Xcode and SDK info
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep iphoneos
 
       - name: Build CameraAccess
         working-directory: samples/CameraAccess
         run: |
+          # Get the latest iphoneos SDK
+          SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+          echo "Using SDK: $SDK"
+
           xcodebuild clean build \
             -project CameraAccess.xcodeproj \
             -scheme CameraAccess \
             -configuration Release \
-            -sdk iphoneos \
+            -sdk "$SDK" \
+            -destination 'generic/platform=iOS' \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
             GCC_TREAT_WARNINGS_AS_ERRORS=NO \
-            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Find and verify app
         id: find_app
         run: |
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" -path "*/Release-iphoneos/*" | head -1)
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" -path "*/Release-iphoneos/*" 2>/dev/null | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Trying alternative paths..."
+            APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CameraAccess.app" 2>/dev/null | head -1)
+          fi
           echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
           echo "Found app at: $APP_PATH"
           ls -la "$APP_PATH/"
