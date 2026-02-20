@@ -33,6 +33,7 @@ class GeminiLiveService: ObservableObject {
   private let delegate = WebSocketDelegate()
   private var urlSession: URLSession!
   private let sendQueue = DispatchQueue(label: "gemini.send", qos: .userInitiated)
+  private var connectionGeneration: Int = 0
 
   init() {
     let config = URLSessionConfiguration.default
@@ -46,6 +47,8 @@ class GeminiLiveService: ObservableObject {
       return false
     }
 
+    connectionGeneration += 1
+    let gen = connectionGeneration
     connectionState = .connecting
 
     let result = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
@@ -54,6 +57,7 @@ class GeminiLiveService: ObservableObject {
       self.delegate.onOpen = { [weak self] protocol_ in
         guard let self else { return }
         Task { @MainActor in
+          guard self.connectionGeneration == gen else { return }
           self.connectionState = .settingUp
           self.sendSetupMessage()
           self.startReceiving()
@@ -64,6 +68,7 @@ class GeminiLiveService: ObservableObject {
         guard let self else { return }
         let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "no reason"
         Task { @MainActor in
+          guard self.connectionGeneration == gen else { return }
           self.resolveConnect(success: false)
           self.connectionState = .disconnected
           self.isModelSpeaking = false
@@ -75,6 +80,7 @@ class GeminiLiveService: ObservableObject {
         guard let self else { return }
         let msg = error?.localizedDescription ?? "Unknown error"
         Task { @MainActor in
+          guard self.connectionGeneration == gen else { return }
           self.resolveConnect(success: false)
           self.connectionState = .error(msg)
           self.isModelSpeaking = false
@@ -89,6 +95,7 @@ class GeminiLiveService: ObservableObject {
       Task {
         try? await Task.sleep(nanoseconds: 15_000_000_000)
         await MainActor.run {
+          guard self.connectionGeneration == gen else { return }
           self.resolveConnect(success: false)
           if self.connectionState == .connecting || self.connectionState == .settingUp {
             self.connectionState = .error("Connection timed out")
@@ -101,6 +108,7 @@ class GeminiLiveService: ObservableObject {
   }
 
   func disconnect() {
+    connectionGeneration += 1  // Invalidate any pending callbacks from old connection
     receiveTask?.cancel()
     receiveTask = nil
     webSocketTask?.cancel(with: .normalClosure, reason: nil)
