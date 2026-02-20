@@ -33,11 +33,7 @@ enum GeminiConfig {
 
     NEVER pretend to do these things yourself.
 
-    IMPORTANT: Before calling execute, ALWAYS speak a brief acknowledgment first. For example:
-    - "Sure, let me add that to your shopping list." then call execute.
-    - "Got it, searching for that now." then call execute.
-    - "On it, sending that message." then call execute.
-    Never call execute silently -- the user needs verbal confirmation that you heard them and are working on it. The tool may take several seconds to complete, so the acknowledgment lets them know something is happening.
+    IMPORTANT: When you decide to use execute, call it IMMEDIATELY as the FIRST action in your response. Do NOT speak before calling the tool -- call it right away. After calling execute, you may speak a brief status update like "Working on that" or "On it" while the tool processes. This ensures the tool call is never lost to interruption.
 
     For messages, confirm recipient and content before delegating unless clearly urgent.
     """
@@ -50,17 +46,17 @@ enum GeminiConfig {
   static var openClawGatewayToken: String { SettingsManager.shared.openClawGatewayToken }
 
   static func websocketURL() -> URL? {
-    guard apiKey != "YOUR_GEMINI_API_KEY" && !apiKey.isEmpty else { return nil }
+    guard apiKey \!= "YOUR_GEMINI_API_KEY" && \!apiKey.isEmpty else { return nil }
     return URL(string: "\(websocketBaseURL)?key=\(apiKey)")
   }
 
   static var isConfigured: Bool {
-    return apiKey != "YOUR_GEMINI_API_KEY" && !apiKey.isEmpty
+    return apiKey \!= "YOUR_GEMINI_API_KEY" && \!apiKey.isEmpty
   }
 
   static var isOpenClawConfigured: Bool {
-    return openClawGatewayToken != "YOUR_OPENCLAW_GATEWAY_TOKEN"
-      && !openClawGatewayToken.isEmpty
-      && openClawHost != "http://YOUR_MAC_HOSTNAME.local"
+    return openClawGatewayToken \!= "YOUR_OPENCLAW_GATEWAY_TOKEN"
+      && \!openClawGatewayToken.isEmpty
+      && openClawHost \!= "http://YOUR_MAC_HOSTNAME.local"
   }
 }
